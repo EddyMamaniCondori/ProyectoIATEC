@@ -1,0 +1,67 @@
+<aside class="app-sidebar shadow" data-bs-theme="ligth" >
+    <div class="sidebar-brand style="background-color: rgba(0,0,0,0.05);">
+        <a href="/" class="brand-link">
+            <img src="~/images/logoiasd.png" alt="IASD Logo" class="brand-image opacity-75 shadow" />
+            <span class="brand-text fw-light">MBOS</span>
+        </a>
+    </div>
+    <div class="sidebar-wrapper">
+        <nav class="mt-2">
+            <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="navigation" aria-label="Main navigation" data-accordion="false" id="navigation">
+                
+                <li class="nav-header">MENÚ PRINCIPAL</li>
+                <li class="nav-item">
+                    <a asp-controller="Eventos" asp-action="Index" class="nav-link">
+                        <i class="nav-icon bi bi-calendar-event"></i>
+                        <p>Mi Agenda</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon bi bi-speedometer"></i>
+                        <p>
+                            Dashboard
+                            <i class="nav-arrow bi bi-chevron-right"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item ms-3">
+                            <a asp-controller="Home" asp-action="Index" class="nav-link">
+                                <i class="bi bi-pie-chart-fill"></i>
+                                <p>Panel Principal</p>
+                            </a>
+                        </li>
+                        </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a asp-controller="Evento" asp-action="Index" class="nav-link">
+                        <i class="fa-solid fa-people-group"></i>
+                        <p>Grupos Pequeños</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">ADMINISTRACIÓN</li>
+
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-people-fill"></i>
+                        <p>
+                            Usuarios
+                            <i class="nav-arrow bi bi-chevron-right"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item ms-3">
+                            <a href="#" class="nav-link">
+                                <i class="bi bi-person"></i>
+                                <p>Lista de Usuarios</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+            </ul>
+            </nav>
+    </div>
+    </aside>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AgendaApi/AgendaApi.csproj" />
+  <Project Path="AgendaWeb/AgendaWeb.csproj" />
+</Solution>

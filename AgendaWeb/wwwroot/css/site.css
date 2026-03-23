@@ -1,0 +1,39 @@
+/* --- CONFIGURACIÓN PARA MODO CLARO --- */
+[data-bs-theme="light"] .app-sidebar, 
+.app-sidebar {
+    background-color: #d9e5ee !important; 
+    --bs-bg-opacity: 1 !important; /* BLOQUEA la transparencia */
+}
+
+/* Forzamos que el contenido interno también sea sólido en claro */
+[data-bs-theme="light"] .sidebar-wrapper {
+    background-color: #d9e5ee !important;
+}
+
+/* --- CONFIGURACIÓN PARA MODO OSCURO --- */
+[data-bs-theme="dark"] .app-sidebar {
+    background-color: #212529 !important; /* Gris oscuro sólido de AdminLTE */
+    --bs-bg-opacity: 1 !important;
+}
+
+[data-bs-theme="dark"] .sidebar-wrapper {
+    background-color: #212529 !important;
+}
+
+/* --- AJUSTE DE TEXTOS PARA QUE SE VEAN SIEMPRE --- */
+[data-bs-theme="light"] .nav-link p, 
+[data-bs-theme="light"] .nav-link i, 
+[data-bs-theme="light"] .brand-text {
+    color: #333 !important; /* Texto oscuro en fondo celeste */
+}
+
+[data-bs-theme="dark"] .nav-link p, 
+[data-bs-theme="dark"] .nav-link i, 
+[data-bs-theme="dark"] .brand-text {
+    color: #ced4da !important; /* Texto claro en fondo oscuro */
+}
+
+
+
+/* Para el menu lateral
+

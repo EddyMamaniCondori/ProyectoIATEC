@@ -1,0 +1,358 @@
+@{
+    ViewData["Title"] = "Mi Agenda";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <!--data table-->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css" />
+    <!--full Calendar-->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
+    <style>
+        #calendar { height: 550px; background: white; padding: 10px; border-radius: 8px; }
+        .fc-event { cursor: pointer; transition: transform 0.2s; }
+        .fc-event:hover { transform: scale(1.02); }
+        #mapa {
+            height: 300px; /* Ajusta según tu diseño */
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* Para que las sugerencias de Google aparezcan sobre el modal */
+        .pac-container {
+            z-index: 9999 !important;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+    </style>
+}
+
+<div class="app-content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6"><h3 class="mb-0">Mi Agenda Personal</h3></div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="#">Inicio</a></li>
+                    <li class="breadcrumb-item active">Agenda</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app-content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card card-outline card-primary shadow">
+                    <div class="card-body">
+                        <div id="calendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoEvento">
+                        <i class="bi bi-calendar-plus me-1"></i> Nuevo Evento
+                    </button>
+                </div>
+
+                <div class="card mb-3 shadow-sm border-0">
+                    <div class="card-body bg-light">
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <input type="date" class="form-control" id="filtroFecha">
+                            </div>
+                            <div class="col-md-7">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Buscar por nombre o lugar...">
+                                    <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-table me-1"></i>
+                        Lista de Eventos
+                    </div>
+                    <div class="card-body">
+                        <table id="tablaEventos" class="display">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Lugar</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<partial name="_ModalCreateEvento" />
+@section Scripts {
+
+    <!--JQUERY-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <!--data table-->
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.js"></script>
+    <script>
+        $(document).ready(function() {
+            const token = localStorage.getItem('token');
+            $('#tablaEventos').DataTable({
+                scrollX: true,
+                "ajax": {
+                    "url": "http://localhost:5188/api/Eventos/mis-eventos",
+                    "type": "GET",
+                    "beforeSend": function (request) {
+                        request.setRequestHeader("Authorization", "Bearer " + token);
+                    },
+                    "dataSrc": "" // Nuestro JSON es una lista directa [], por eso va vacío
+                },
+                "columns": [
+                    { "data": "title" },
+                    { 
+                        "data": "start",
+                        "render": function(data) {
+                            return new Date(data).toLocaleDateString(); // Formatea la fecha
+                        }
+                    },
+                    { 
+                        "data": "tipo",
+                        "render": function(data) {
+                            let color = data === 'Compartido' ? 'bg-success' : 'bg-primary';
+                            return `<span class="badge ${color}">${data}</span>`;
+                        }
+                    },
+                    { "data": "lugar" },
+                    {
+                        "data": "id",
+                        "render": function (data) {
+                            return `
+                                <button class="btn btn-sm btn-warning" onclick="editarEvento(${data})"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-danger" onclick="eliminarEvento(${data})"><i class="fas fa-trash"></i></button>
+                            `;
+                        }
+                    }
+                ],
+                language: {
+                    search: "Buscar:",   // Cambia el texto de "Search"
+                    lengthMenu: "Mostrar _MENU_ registros por página",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "No hay registros disponibles",
+                    infoFiltered: "(filtrado de _MAX_ registros totales)",
+                    zeroRecords: "No se encontraron resultados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    },
+                },
+                "responsive": true,
+                "autoWidth": false
+            });
+        });
+    </script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+
+        const tokenDesdeServidor = "@ViewBag.Token";
+        if (tokenDesdeServidor) {
+            localStorage.setItem('token', tokenDesdeServidor);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                themeSystem: 'bootstrap5',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    month: 'Mes',
+                    week: 'Semana',
+                    list: 'Agenda'
+                },
+
+                // FUENTE DE DATOS: Aquí es donde ocurre la magia
+                events: function(info, successCallback, failureCallback) {
+                    // 1. Intentamos obtener el Token (asumiendo que lo guardaste al hacer login)
+                    const token = localStorage.getItem('token'); 
+
+                    console.log("🛰️ Iniciando petición al Backend...");
+
+                    fetch('http://localhost:5188/api/Eventos/mis-eventos', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + token, // Enviamos el cerrojo
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error en la comunicación:', error);
+                        failureCallback(error);
+                    });
+                },
+
+                // Al hacer clic en un evento (Requisito de usuario)
+                eventClick: function(info) {
+                    const evt = info.event.extendedProps;
+                    Swal.fire({
+                        title: info.event.title,
+                        html: `
+                            <div class="text-start">
+                                <p><b>📍 Lugar:</b> ${evt.lugar || 'No especificado'}</p>
+                                <p><b>📝 Descripción:</b> ${evt.description || 'Sin descripción'}</p>
+                                <p><b>🏷️ Tipo:</b> <span class="badge bg-info">${evt.tipo}</span></p>
+                            </div>
+                        `,
+                        icon: 'info',
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+            });
+
+            calendar.render();
+        });
+
+        // ********************************
+        //              MODAL DE CREAR EVENTO
+        //************************************
+        document.addEventListener('DOMContentLoaded', function() {
+            const fInicio = document.getElementById('fecha_inicio');
+            const fFin = document.getElementById('fecha_finalizacion');
+            const hInicio = document.getElementById('hora_inicio');
+            const hFin = document.getElementById('hora_finalizacion');
+            const checkTipo = document.getElementById('checkTipo');
+            const tipoTexto = document.getElementById('tipoTexto');
+
+            // 1. Establecer fecha actual por defecto
+            const hoy = new Date().toISOString().split('T')[0];
+            fInicio.value = hoy;
+            fFin.value = hoy;
+
+            // 2. Al cambiar Fecha Inicio -> Actualizar Fecha Fin y el "min" permitido
+            fInicio.addEventListener('change', () => {
+                fFin.value = fInicio.value;
+                fFin.min = fInicio.value;
+            });
+
+            // 3. Al cambiar Hora Inicio -> Sumar 1 hora a la Hora Fin
+            hInicio.addEventListener('change', () => {
+                const [horas, minutos] = hInicio.value.split(':');
+                let h = parseInt(horas) + 1;
+                if (h > 23) h = "00";
+                if (h < 10 && h !== "00") h = "0" + h;
+                
+                hFin.value = `${h}:${minutos}`;
+            });
+
+            // 4. Lógica visual del Checkbox de Tipo
+            checkTipo.addEventListener('change', () => {
+                if(checkTipo.checked) {
+                    checkTipo.value = "Compartido";
+                    tipoTexto.innerText = "Los invitados podrán ver este evento.";
+                } else {
+                    checkTipo.value = "Exclusivo";
+                    tipoTexto.innerText = "Solo tú podrás ver este evento.";
+                }
+            });
+        });
+        
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArGj37pDQqn1AAtZR7dpBOYGQMF_5pIOk&libraries=places&callback=initMap" async defer></script>
+    <script>
+        let map;
+        let marker;
+        let autocomplete;
+
+        function initMap() {
+            // Coordenadas iniciales (La Paz)
+            const initialPos = { lat: -16.5000, lng: -68.1500 };
+
+            map = new google.maps.Map(document.getElementById("mapa"), {
+                center: initialPos,
+                zoom: 15,
+                mapTypeControl: false
+            });
+
+            marker = new google.maps.Marker({
+                position: initialPos,
+                map: map,
+                draggable: true // El usuario puede ajustar el pin manualmente
+            });
+
+            // --- CONFIGURACIÓN DEL BUSCADOR ---
+            const input = document.getElementById('direccion');
+            
+            // Creamos el objeto Autocomplete
+            autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['geocode', 'establishment'], // Busca direcciones y negocios
+                componentRestrictions: { country: "bo" } // Opcional: Restringir a Bolivia
+            });
+
+            // Vincular el buscador al mapa
+            autocomplete.bindTo('bounds', map);
+
+            // EVENTO: Cuando el usuario selecciona una sugerencia
+            autocomplete.addListener('place_changed', function () {
+                const place = autocomplete.getPlace();
+
+                if (!place.geometry || !place.geometry.location) {
+                    window.alert("No se encontró información detallada de este lugar.");
+                    return;
+                }
+
+                // 1. Mover el mapa y el pin
+                if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport);
+                } else {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(17);
+                }
+                marker.setPosition(place.geometry.location);
+
+                // 2. Guardar automáticamente Latitud y Longitud en los inputs ocultos
+                document.getElementById('lat').value = place.geometry.location.lat();
+                document.getElementById('lng').value = place.geometry.location.lng();
+                
+                // El input 'direccion' ya tiene el nombre del lugar, así que se enviará en 'lugar'
+                console.log("Datos capturados:", {
+                    direccion: input.value,
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                });
+            });
+
+            // EVENTO: Si el usuario arrastra el pin manualmente, actualizamos lat/lng
+            marker.addListener('dragend', function() {
+                const pos = marker.getPosition();
+                document.getElementById('lat').value = pos.lat();
+                document.getElementById('lng').value = pos.lng();
+            });
+        }
+    </script>
+}
