@@ -1,0 +1,213 @@
+<style>
+    .status-badge { font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 50px; font-weight: bold; }
+    .countdown-box { border-left: 6px solid #4e73df; padding: 10px; margin-bottom: 15px; border-radius: 8px; }
+    .participant-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+    .participant-avatar { width: 35px; height: 35px; background: #4e73df; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: bold; font-size: 0.8rem; }
+    /* Animación para "En Curso" */
+    .pulse-now { animation: pulse-red 2s infinite; }
+        @@keyframes pulse-red { 
+        0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); } 
+        70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); } 
+        100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); } 
+    }
+    /* Animación de pulso mejorada para el estado "EN CURSO" */
+    .pulse-now {
+        background-color: #ff4757 !important;
+        animation: pulse-red-small 2s infinite;
+    }
+
+    @@keyframes pulse-red-small {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 71, 87, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    }
+
+    .modal-title {
+        font-size: 1.8rem;
+    }
+
+    .select2-container--default .select2-selection--multiple {
+        color: #000000 !important;
+        padding: 6px ; /* Espacio para que respire por dentro */
+        min-height: 48px ; /* Altura mínima para que se vea sustancial */
+        box-shadow: inset 0 1px 2px rgba(0,0,0,.075) ; /* Sutil sombra interior */
+        background-color: transparent !important;
+    }
+
+    
+    .select2-container--default .select2-selection__choice {
+        background-color: #4e73df !important; /* Un azul primario moderno y vibrante */
+        color: white !important; /* Texto blanco para buen contraste */
+        border: none !important; /* Quitamos el borde por defecto */
+        border-radius: 50px !important; /* Convertimos la tag en una píldora (pill) */
+        padding: 4px 18px !important; /* Más espacio a los lados para el nombre */
+        margin: 4px !important; /* Espacio entre una tag y otra */
+        font-size: 0.85rem !important; /* Texto un poquito más pequeño para que no grite */
+        font-weight: 500 !important; /* Peso de fuente medio */
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px; /* Espacio entre el nombre y la X de eliminar */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; /* Sutil sombra para dar volumen */
+        transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    /* Efecto al pasar el mouse sobre la tag */
+    .select2-container--default .select2-selection__choice:hover {
+        background-color: #2e59d9 !important; 
+        transform: translateY(-1px); 
+    }
+
+    /* DISEÑO DE LA 'X' DE ELIMINAR */
+    .select2-container--default .select2-selection__choice__remove {
+        color: rgba(255,255,255,0.8) ; 
+        font-size: 1.1rem !important; 
+        margin-right: 0 !important; 
+        margin-left: 0 !important;
+        border: none !important;
+        background: transparent ; 
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        transform: translateY(4px);
+        position: relative;
+    }
+
+    .select2-container--default .select2-selection__choice__remove:hover {
+        background-color: rgba(255,255,255,0.3) !important; 
+        color: white !important; 
+    }
+
+    .select2-container--default .select2-search--inline .select2-search__field {
+        margin-left: 10px !important;
+        font-size: 0.9rem !important;
+        margin-top: 5px !important;
+    }
+
+</style>
+
+<div class="modal fade" id="modalDetallesEvento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            
+            <div class="modal-header bg-primary-subtle border-0 py-4 position-relative">
+                <button type="button" class="btn-close position-absolute end-0 top-0 m-4" data-bs-dismiss="modal"></button>
+
+                <div class="d-flex align-items-center justify-content-center w-100 gap-3 flex-wrap">
+                    <h2 class="modal-title fw-bold  m-0" id="detNombre" style="letter-spacing: -0.5px;">
+                        Cargando evento...asdas
+                    </h2>
+                    <div id="detStatusBadge"></div>
+                </div>
+            </div>
+
+            <div class="modal-body px-6 pb-4 pt-4">
+                <div class="row g-4" id="rowContenedor">
+
+                    <div id="colDatos" class="col-md-4">
+                        <div class="card h-100 border shadow rounded-4">
+                            <div class="card-body p-4">
+                                <div id="detCountdown" class="countdown-box  shadow  d-none">
+                                    <small class="text-muted d-block">Tiempo restante:</small>
+                                    <span class="fw-bold text-primary" id="countdownText"></span>
+                                </div>
+
+                                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>Información</h5>
+                                
+                                <p class="mb-3">
+                                    <strong><i class="fas fa-align-left me-2"></i>Descripción:</strong><br />
+                                    <span id="detDescripcion" class="text-muted small"></span>
+                                </p>
+
+                                <p class="mb-3">
+                                    <strong><i class="far fa-calendar-alt me-2"></i>Fecha:</strong><br />
+                                    <span id="detFecha" class="small fw-bold"></span>
+                                </p>
+
+                                <p class="mb-3">
+                                    <strong><i class="far fa-clock me-2"></i>Horario:</strong><br />
+                                    <span id="detHorario" class="small"></span>
+                                </p>
+
+                                <div class="mt-4">
+                                    <button class="btn btn-sm btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseParticipantes">
+                                        <span><i class="fas fa-users me-2"></i>Ver Participantes</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="collapse mt-2" id="collapseParticipantes">
+                                        <div id="listaParticipantes" class=" rounded shadow-sm p-2" style="max-height: 200px; overflow-y: auto;">
+                                            </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="colImagen" class="col-md-4 text-center">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-body d-flex align-items-center justify-content-center p-3">
+                                <img id="detImgElement" src="" class="img-fluid rounded-3 shadow-sm" style="max-height: 420px; object-fit: contain;" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="colMapa" class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                            <div class="card-body p-0">
+                                <div id="mapaDetalle" style="width: 100%; height: 100%; min-height: 400px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                
+            </div>
+            <div id="footerDetalle" class="modal-footer d-flex flex-column align-items-center border-0 py-3 px-4 gap-3">
+                <div id="grupoAccionesPendientes" class="d-flex justify-content-center gap-3 w-100 d-none">
+                    <button id="btnModalAceptar" onclick="gestionarInvitacionDesdeModal('aceptar')" class="btn btn-success px-5 rounded-pill shadow-sm fw-bold">
+                        <i class="bi bi-check-lg me-2"></i>Aceptar Invitación
+                    </button>
+                    <button id="btnModalRechazar" onclick="gestionarInvitacionDesdeModal('rechazar')" class="btn btn-outline-danger px-5 rounded-pill shadow-sm">
+                        <i class="bi bi-x-lg me-2"></i>Rechazar
+                    </button>
+                </div>
+
+                <div id="grupoAccionesAceptadas" class="w-100 d-none">
+                    <div id="rowInvitacion" class="w-100 mb-3" style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-9">
+                                <label class="form-label fw-bold small mb-1">
+                                    <i class="fas fa-users me-1"></i> Selecciona personas para invitar:
+                                </label>
+                                <select id="selectUsuarios" class="form-control" multiple="multiple" style="width: 100%"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <button onclick="enviarInvitaciones()" class="btn btn-outline-success w-100 rounded-pill shadow-sm">
+                                    <i class="fas fa-paper-plane me-1"></i>Enviar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <a id="btnCalendar" target="_blank" class="btn btn-outline-danger px-4 rounded-pill shadow-sm">
+                            <i class="fab fa-google me-2"></i>Calendar
+                        </a>
+                        <a id="btnExternalMap" target="_blank" class="btn btn-outline-primary px-4 rounded-pill shadow-sm">
+                            <i class="fas fa-route me-2"></i>Google Maps
+                        </a>
+                        <button id="btnInvitarToggle" onclick="toggleInvitacion()" class="btn btn-outline-primary px-4 rounded-pill shadow-sm">
+                            <i class="fas fa-user-plus me-2"></i>Invitar a otros
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

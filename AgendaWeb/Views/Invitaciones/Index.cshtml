@@ -1,0 +1,683 @@
+@section Styles {
+    <!--select2-->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!--data table-->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css" />
+    
+}
+
+<div class="app-content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6"><h3 class="mb-0 fw-bold">Mis Invitaciones</h3></div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                    <li class="breadcrumb-item active">Invitaciones</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app-content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                
+
+                <div class="card mb-3 shadow-sm border-0">
+                    <div class="card-body border shadow-sm">
+                        <div class="row g-3">
+                            <div class="col-md-8 border-end">
+                                <label class="small fw-bold text-primary mb-2 d-block"><i class="bi bi-funnel-fill"></i> Filtros:</label>
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Fecha Inicio:</small>
+                                        <input type="date" class="form-control form-control-sm" id="f_inicio">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Fecha Fin:</small>
+                                        <input type="date" class="form-control form-control-sm" id="f_fin">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Hora Inicio:</small>
+                                        <input type="time" class="form-control form-control-sm" id="h_inicio">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Hora Fin:</small>
+                                        <input type="time" class="form-control form-control-sm" id="h_fin">
+                                    </div>
+                                </div>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm px-4" id="btnAplicarFiltro">Aplicar Filtro</button>
+                                    <button class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro">Limpiar</button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="small fw-bold text-muted mb-2 d-block">Búsqueda rápida (Texto):</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="buscadorPersonalizado" class="form-control" placeholder="Nombre, lugar o persona...">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mb-4">
+                        <div class="card-header">
+                            
+                                <i class="bi bi-table me-2 text-primary"></i>Invitaciones a eventos
+                            
+                        </div>
+                        <div class="card-body">
+                                <table id="tablaInvitaciones" class="table table-hover align-middle mb-0 w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Tipo</th>
+                                            <th>Quién Invita</th>
+                                            <th>Fecha</th>
+                                            <th>Horario</th>
+                                            <th>Lugar</th>
+                                            <th>Invitacion</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                        </div>
+                </div>
+                @await Html.PartialAsync("_ModalDetallesEvento")
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!--JQUERY-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <!--select2-->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!--data table-->
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArGj37pDQqn1AAtZR7dpBOYGQMF_5pIOk&libraries=places&callback=initMap" async defer></script>
+    
+    <script>
+   
+    function gestionarInvitacionDesdeModal(accion) {
+
+        gestionarInvitacion(idEventoActual, accion);
+        
+
+        setTimeout(() => {
+            const modalEl = document.getElementById('modalDetallesEvento');
+            const modalInstancia = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstancia) {
+                modalInstancia.hide();
+            }
+        }, 1500); 
+    }
+
+        $(document).ready(function () {
+            const hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+            $('#f_inicio').val(hoy);
+            $('#f_fin').val(hoy);
+            $('#h_inicio').val(''); // Hora en blanco
+            $('#h_fin').val('');
+
+            let esPrimeraCarga = true;
+            // 1. Inicializar DataTable
+            let tabla = $('#tablaInvitaciones').DataTable({
+                ajax: {
+                    url: 'http://localhost:5188/api/Invitaciones/mis-invitaciones',
+                    type: 'GET',
+                    data: function (d) {
+                        // Si es la primera vez que entra, NO enviamos filtros (la API devolverá todo)
+                        if (esPrimeraCarga) {
+                            return d; 
+                        }
+                        // Si ya no es la primera carga, enviamos los valores de los inputs
+                        d.start = $('#f_inicio').val();
+                        d.end = $('#f_fin').val();
+                        d.startTime = $('#h_inicio').val();
+                        d.endTime = $('#h_fin').val();
+                    },
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                },
+                columns: [
+                    { 
+                        data: 'eventoNombre',
+                        render: (data) => `<span class="fw-bold text-dark">${data}</span>`
+                    },
+                    { 
+                        data: 'tipo',
+                        render: function(data) {
+                            // Ponemos colores distintos según el tipo si quieres
+                            let clase = data === 'Exclusivo' ? 'bg-danger-subtle text-danger' : 'bg-info-subtle text-info';
+                            return `<span class="badge ${clase} border">${data}</span>`;
+                        }
+                    },
+                    
+                    { data: 'quienInvita' },
+                    { data: 'fecha' },
+                    { 
+                        data: null, 
+                        render: function(row) {
+                            // Combinamos las dos horas en una sola celda
+                            return `<span class="text-muted small"><i class="bi bi-clock me-1"></i>${row.horaInicio} a ${row.horaFin}</span>`;
+                        }
+                    },
+                    { data: 'lugar' },
+                    { 
+                        data: 'estado',
+                        render: function(data) {
+                            // Badges elegantes según el estado de la tabla Agendas
+                            const clase = data === 'Aceptado' ? 'bg-success-subtle text-success border-success' : 'bg-warning-subtle text-warning border-warning';
+                            const icono = data === 'Aceptado' ? 'bi-check-circle-fill' : 'bi-clock-history';
+                            return `<span class="badge ${clase} border px-3"><i class="bi ${icono} me-1"></i> ${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            // Definimos el contenedor con un flexbox para mejor alineación
+                            let html = `<div class="d-flex justify-content-center gap-1">`;
+
+                            // 1. BOTÓN VER (Común para ambos estados)
+                            html += `
+                                <button class="btn btn-sm btn-outline-info rounded-pill shadow-sm" 
+                                        onclick="verDetalles(${row.id_evento}, '${row.estado}')" title="Ver detalles">
+                                    <i class="bi bi-eye"></i> Ver
+                                </button>`;
+
+                            if (row.estado === 'Pendiente') {
+                                // 2. BOTÓN ACEPTAR (Solo Pendiente)
+                                html += `
+                                    <button class="btn btn-sm btn-outline-success rounded-pill shadow-sm" 
+                                            id="btn-aceptar-${row.id_evento}" 
+                                            onclick="gestionarInvitacion(${row.id_evento}, 'aceptar')" title="Aceptar Invitación">
+                                        <i class="bi bi-check-lg"></i> Aceptar
+                                    </button>`;
+
+                                // 3. BOTÓN RECHAZAR (Solo Pendiente)
+                                html += `
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill shadow-sm" 
+                                            id="btn-rechazar-${row.id_evento}" 
+                                            onclick="gestionarInvitacion(${row.id_evento}, 'rechazar')" title="Rechazar">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>`;
+                            } else {
+                                // 2. BOTÓN ELIMINAR (Solo Aceptado)
+                                html += `
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill shadow-sm" 
+                                            id="btn-rechazar-${row.id_evento}" 
+                                            onclick="gestionarInvitacion(${row.id_evento}, 'rechazar')" title="Eliminar de mi agenda">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>`;
+                            }
+
+                            html += `</div>`;
+                            return html;
+                        }
+                    }
+                ],
+                language: {
+                    search: "Busqueda Rapida:",   // Cambia el texto de "Search"
+                    lengthMenu: "Mostrar _MENU_ registros por página",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "No hay registros disponibles",
+                    infoFiltered: "(filtrado de _MAX_ registros totales)",
+                    zeroRecords: "No se encontraron resultados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    },
+                }
+            });
+
+            // 2. Lógica del Buscador Personalizado
+            $('#buscadorPersonalizado').on('keyup', function () {
+                tabla.search(this.value).draw();
+            });
+
+            // 3. Filtro de Fecha
+            $('#f_inicio').on('change', function() {
+                $('#f_fin').val($(this).val());
+            });
+
+            // Botón APLICAR FILTRO
+            $('#btnAplicarFiltro').on('click', function () {
+                const f_inicio = new Date($('#f_inicio').val());
+                const f_fin = new Date($('#f_fin').val());
+
+                // Validación: Fecha fin no puede ser menor a inicio
+                if (f_fin < f_inicio) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Rango de fechas inválido',
+                        text: 'La fecha final no puede ser anterior a la fecha de inicio.'
+                    });
+                    return;
+                }
+
+                // Marcamos que ya no es la primera carga para que el AJAX use los filtros
+                esPrimeraCarga = false;
+                tabla.ajax.reload();
+            });
+
+            // Botón LIMPIAR: Restablece a "Todo" y reinicia el flag
+            $('#btnLimpiarFiltro').on('click', function () {
+                esPrimeraCarga = true;
+                $('#f_inicio').val(hoy);
+                $('#f_fin').val(hoy);
+                $('#h_inicio').val('');
+                $('#h_fin').val('');
+                tabla.ajax.reload();
+            });
+
+            // Búsqueda rápida de DataTables (Independiente)
+            $('#buscadorPersonalizado').on('keyup', function () {
+                tabla.search(this.value).draw();
+            });
+
+
+        });
+
+        // 4. Función para Aceptar/Rechazar
+        function gestionarInvitacion(id, accion) {
+            // Buscamos el botón específico que se presionó (Aceptar o Eliminar)
+            // Agregamos un sufijo para diferenciar qué botón de la fila es
+            const btn = document.getElementById(`btn-${accion}-${id}`);
+            const originalContent = btn ? btn.innerHTML : '';
+
+            Swal.fire({
+                title: `¿Confirmas ${accion}?`,
+                text: accion === 'rechazar' ? "Esta acción quitará el evento de tu lista." : "Se verificará tu disponibilidad.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: accion === 'aceptar' ? '#198754' : '#dc3545',
+                confirmButtonText: 'Sí, confirmar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // 🔄 Efecto de carga
+                    if(btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+                    }
+
+                    fetch(`http://localhost:5188/api/Invitaciones/${id}/${accion}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    })
+                    .then(async res => {
+                        const data = await res.json();
+                        if (!res.ok) {
+                            // Si la API devuelve error (como el conflicto de horario)
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Atención',
+                                text: data.detalle || data.message,
+                                confirmButtonColor: '#002147'
+                            });
+                            throw new Error(data.message);
+                        }
+                        return data;
+                    })
+                    .then(res => {
+                        // Éxito total
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Hecho!',
+                            text: res.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        
+                        // Recargar tabla y campana
+                        $('#tablaInvitaciones').DataTable().ajax.reload(null, false); 
+                        actualizarCampana();
+                    })
+                    .catch((err) => {
+                        console.error("Error en la petición:", err);
+                        // Si hubo error, devolvemos el botón a su estado original
+                        if(btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = originalContent;
+                        }
+                    });
+                }
+            });
+        }
+
+        
+    </script>
+
+    <script>
+        // *************************************************
+        //              MODAL DE VER DETALLES DEL EVENTO
+        //***************************************************
+        let mapaDetalleObj = null;
+        let marcadorDetalleObj = null;
+        let intervaloCuentaRegresiva = null;
+        let idEventoActual = null;
+        async function verDetalles(id, estado) {
+            idEventoActual = id;
+            const token = localStorage.getItem('token');
+            limpiarModal();
+            const grupoPendiente = document.getElementById('grupoAccionesPendientes');
+            const grupoAceptado = document.getElementById('grupoAccionesAceptadas');
+
+            if (estado === 'Pendiente') {
+                grupoPendiente?.classList.remove('d-none');
+                grupoAceptado?.classList.add('d-none');
+            } else {
+                grupoPendiente?.classList.add('d-none');
+                grupoAceptado?.classList.remove('d-none');
+            }
+
+
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${id}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!res.ok) throw new Error("Evento no encontrado");
+                const ev = await res.json();
+
+
+                // --- 1. DATOS BÁSICOS (Con protección de nulos) ---
+                const txtNombre = document.getElementById('detNombre');
+                if (txtNombre) txtNombre.innerText = ev.nombre;
+
+                const txtDesc = document.getElementById('detDescripcion');
+                if (txtDesc) txtDesc.innerText = ev.descripcion || "Sin descripción.";
+
+                const txtFecha = document.getElementById('detFecha');
+                if (txtFecha) txtFecha.innerText = formatearFechas(ev.fecha_inicio, ev.fecha_finalizacion);
+
+                const txtHorario = document.getElementById('detHorario');
+                if (txtHorario) txtHorario.innerText = `${ev.hora_inicio} - ${ev.hora_finalizacion}`;
+
+                // OJO: En tu HTML pusiste id="detTipo", no "detTipoBadge"
+                const badgeTipo = document.getElementById('detTipo');
+                if (badgeTipo) badgeTipo.innerText = ev.tipo;
+
+                // --- 2. LÓGICA DE TIEMPO (Solo si existen los elementos) ---
+                const containerStatus = document.getElementById('detStatusBadge');
+                if (containerStatus) {
+                    actualizarEstadoEvento(`${ev.fecha_inicio}T${ev.hora_inicio}`, `${ev.fecha_finalizacion}T${ev.hora_finalizacion}`);
+                }
+
+                const containerCountdown = document.getElementById('detCountdown');
+                if (containerCountdown) {
+                    iniciarCuentaRegresiva(`${ev.fecha_inicio}T${ev.hora_inicio}`);
+                }
+
+                // --- 3. IMAGEN (Layout Adaptativo) ---
+                const colImg = document.getElementById('colImagen');
+                const imgElement = document.getElementById('detImgElement');
+                if (ev.imagen && colImg && imgElement) {
+                    imgElement.src = `http://localhost:5188/uploads/${ev.imagen}`;
+                    colImg.classList.remove('d-none');
+                    document.getElementById('colDatos').className = "col-md-4";
+                    document.getElementById('colMapa').className = "col-md-4";
+                } else if (colImg) {
+                    colImg.classList.add('d-none');
+                    document.getElementById('colDatos').className = "col-md-6 border-end";
+                    document.getElementById('colMapa').className = "col-md-6";
+                }
+
+                // --- 4. MAPA Y PARTICIPANTES ---
+                actualizarMapaDetalleInteractivos(ev.latitud, ev.longitud);
+                cargarParticipantes(id);
+
+
+
+                // --- 5. BOTONES (Google Calendar y Maps) ---
+                const btnMaps = document.getElementById('btnExternalMap');
+                if (btnMaps) btnMaps.href = `https://www.google.com/maps?q=${ev.latitud},${ev.longitud}`;
+                
+                const btnCal = document.getElementById('btnCalendar');
+                if (btnCal) {
+                    const s = ev.fecha_inicio.replaceAll('-', '') + 'T' + ev.hora_inicio.replaceAll(':', '') + '00';
+                    const e = ev.fecha_finalizacion.replaceAll('-', '') + 'T' + ev.hora_finalizacion.replaceAll(':', '') + '00';
+                    btnCal.href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.nombre)}&dates=${s}/${e}&details=${encodeURIComponent(ev.descripcion)}&location=${encodeURIComponent(ev.lugar)}`;
+                }
+                //BOTON DE INVITAR A PERSONAS
+                const ahora = new Date();
+                const fechaFin = new Date(`${ev.fecha_finalizacion}T${ev.hora_finalizacion}`);
+                const btnInvitar = document.getElementById('btnInvitarToggle');
+                if (ahora > fechaFin) {
+                    btnInvitar.classList.add('d-none'); 
+                } else {
+                    btnInvitar.classList.remove('d-none');
+                }
+
+                // --- 6. LANZAR EL MODAL ---
+                const modalElement = document.getElementById('modalDetallesEvento');
+                if (modalElement) {
+                    const myModal = new bootstrap.Modal(modalElement);
+                    myModal.show();
+                    }
+
+            } catch (error) { 
+                console.error("Error completo:", error);
+                Swal.fire("Error", "No se pudo cargar el detalle del evento.", "error");
+            }
+        }
+        function limpiarModal() {
+            const select = $('#selectUsuarios');
+            if (select.hasClass("select2-hidden-accessible")) {
+                select.val(null).trigger('change').select2('destroy');
+            }
+            
+            // Reset UI
+            document.getElementById('rowInvitacion')?.classList.add('d-none');
+            document.getElementById('listaParticipantes').innerHTML = '';
+            if (intervaloCuentaRegresiva) clearInterval(intervaloCuentaRegresiva);
+        }
+
+        function actualizarEstadoEvento(startISO, endISO) {
+            const now = new Date();
+            const start = new Date(startISO);
+            const end = new Date(endISO);
+            const badge = document.getElementById('detStatusBadge');
+            
+            if (now > end) {
+                badge.innerHTML = `<span class="status-badge bg-secondary text-white shadow-sm px-3 py-1">CONCLUIDO</span>`;
+            } else if (now >= start && now <= end) {
+                badge.innerHTML = `<span class="status-badge bg-danger text-white pulse-now shadow-sm px-3 py-1">● EN CURSO</span>`;
+            } else {
+                badge.innerHTML = `<span class="status-badge bg-success text-white shadow-sm px-3 py-1">PRÓXIMAMENTE</span>`;
+            }
+        }
+
+        function formatearFechas(f1, f2) {
+            const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+            const d1 = new Date(f1 + "T00:00:00");
+            const d2 = new Date(f2 + "T00:00:00");
+
+            if (f1 === f2) {
+                return d1.toLocaleDateString('es-ES', opciones);
+            } else {
+                const opCorta = { day: 'numeric', month: 'short' };
+                return `Del ${d1.toLocaleDateString('es-ES', opCorta)} al ${d2.toLocaleDateString('es-ES', opciones)}`;
+            }
+        }
+
+        function iniciarCuentaRegresiva(fechaISO) {
+            if (intervaloCuentaRegresiva) clearInterval(intervaloCuentaRegresiva);
+            const target = new Date(fechaISO).getTime();
+            const box = document.getElementById('detCountdown');
+            const textEl = document.getElementById('countdownText');
+
+            intervaloCuentaRegresiva = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff < 0) {
+                    box.classList.add('d-none');
+                    clearInterval(intervaloCuentaRegresiva);
+                    return;
+                }
+
+                box.classList.remove('d-none');
+                const d = Math.floor(diff / (86400000));
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                textEl.innerText = `Faltan ${d}d ${h}h ${m}m`;
+            }, 1000);
+        }
+
+        function cargarParticipantes(idEvento) {
+            const token = localStorage.getItem('token'); // Obtenemos el token
+            const lista = document.getElementById('listaParticipantes');
+            lista.innerHTML = '<div class="text-center p-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
+            fetch(`http://localhost:5188/api/Eventos/${idEvento}/participantes`, {
+                method: 'GET',
+                headers: { 
+                    'Authorization': 'Bearer ' + token, // ¡Esta es la línea clave!
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => {
+                // Validamos la respuesta antes de convertir a JSON
+                if (!res.ok) {
+                    if (res.status === 401) throw new Error("Sesión expirada");
+                    throw new Error("Error en el servidor");
+                }
+                return res.json();
+            })
+            .then(data => {
+                lista.innerHTML = '';
+                if (!data || data.length === 0) {
+                    lista.innerHTML = '<div class="text-muted small p-3 text-center italic">Aún no hay participantes confirmados.</div>';
+                    return;
+                }
+                data.forEach(p => {
+                    // Usamos nombres de propiedades en minúsculas (como los envía el JSON)
+                    let estadoHtml = '';
+                    if (p.estado === "Aceptado") {
+                        estadoHtml = '<span class="badge bg-success-subtle text-success border border-success-subtle ms-auto" style="font-size: 0.65rem;">Confirmado</span>';
+                    } else {
+                        estadoHtml = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-auto" style="font-size: 0.65rem;">Invitado</span>';
+                    }
+                    const inicial = p.nombre ? p.nombre.charAt(0).toUpperCase() : '?';
+                    lista.innerHTML += `
+                                        <div class="participant-item d-flex align-items-center p-2 mb-1 rounded-3 hover-light" style="border-bottom: 1px solid #f8f9fa;">
+                                            <div class="participant-avatar me-2" style="width: 32px; height: 32px; font-size: 0.75rem; background: #eef2ff; color: #4e73df; border: 1px solid #d1d3e2;">
+                                                ${inicial}
+                                            </div>
+                                            <div class="d-flex flex-column" style="line-height: 1.2;">
+                                                <span class="fw-bold text-dark small">${p.nombre} ${p.ape_paterno}</span>
+                                                <span class="text-muted" style="font-size: 0.7rem;">${p.ape_materno || ''}</span>
+                                            </div>
+                                            ${estadoHtml}
+                                        </div>`;
+                });
+            })
+            .catch(err => {
+                lista.innerHTML = '<div class="text-danger small p-2 text-center">No se pudieron cargar los participantes.</div>';
+            });
+        }
+
+        function actualizarMapaDetalleInteractivos(lat, lng) {
+            const pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            if (!mapaDetalleObj) {
+                mapaDetalleObj = new google.maps.Map(document.getElementById("mapaDetalle"), {
+                    zoom: 15, center: pos,
+                    draggable: true, 
+                    scrollwheel: true,
+                    mapTypeControl: true
+                });
+                marcadorDetalleObj = new google.maps.Marker({ position: pos, map: mapaDetalleObj });
+            } else {
+                mapaDetalleObj.setCenter(pos);
+                marcadorDetalleObj.setPosition(pos);
+            }
+            
+            // Refrescar mapa al abrir modal para evitar el fondo gris
+            setTimeout(() => {
+                google.maps.event.trigger(mapaDetalleObj, "resize");
+                mapaDetalleObj.setCenter(pos);
+            }, 300);
+        }
+        // --- FUNCIONES DE INVITAR A EVENTOS A OTROS ---
+        function toggleInvitacion() {
+            const row = document.getElementById('rowInvitacion');
+            row.classList.toggle('d-none');
+            
+            // Si se muestra, cargamos los usuarios disponibles
+            if (!row.classList.contains('d-none')) {
+                cargarUsuariosDisponibles();
+            }
+        }
+
+        async function cargarUsuariosDisponibles() {
+            const token = localStorage.getItem('token');
+            const select = $('#selectUsuarios'); // Usamos jQuery para Select2
+            select.select2({
+                placeholder: "Buscar personas para invitar...",
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('#footerDetalle'),
+                language: {
+                    noResults: () => "No hay usuarios disponibles"
+                }
+            });
+
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${idEventoActual}/usuarios-disponibles`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const usuarios = await res.json();
+
+                select.empty(); // Limpiar opciones previas
+                usuarios.forEach(u => {
+                    select.append(new Option(u.nombreCompleto, u.id, false, false));
+                });
+                select.trigger('change');
+            } catch (e) {
+                console.error("Error cargando usuarios:", e);
+            }
+        }
+
+        async function enviarInvitaciones() {
+            const ids = $('#selectUsuarios').val(); // Obtenemos lista de IDs seleccionados
+            if (!ids || ids.length === 0) {
+                Swal.fire("Aviso", "Selecciona al menos un usuario", "info");
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${idEventoActual}/invitar`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ids)
+                });
+
+                if (res.ok) {
+                    Swal.fire("¡Éxito!", "Invitaciones enviadas", "success");
+                    toggleInvitacion(); // Ocultar panel
+                    cargarParticipantes(idEventoActual); // Refrescar lista de abajo
+                }
+            } catch (e) {
+                Swal.fire("Error", "No se pudieron enviar las invitaciones", "error");
+            }
+        }
+        document.getElementById('modalDetallesEvento').addEventListener('hidden.bs.modal', limpiarModal);
+    </script>
+}

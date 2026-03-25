@@ -1,0 +1,984 @@
+@section Styles {
+    <!--select2-->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!--data table-->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.dataTables.css" />
+    
+}
+
+<div class="app-content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6"><h3 class="mb-0 fw-bold">Mis Eventos Creados</h3></div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                    <li class="breadcrumb-item active">Mis Eventos</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app-content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoEvento">
+                        <i class="bi bi-calendar-plus me-1"></i> Nuevo Evento
+                    </button>
+                </div>
+
+                <div class="card mb-3 shadow-sm border-0">
+                    <div class="card-body border shadow-sm">
+                        <div class="row g-3">
+                            <div class="col-md-8 border-end">
+                                <label class="small fw-bold text-primary mb-2 d-block"><i class="bi bi-funnel-fill"></i> Filtros:</label>
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Fecha Inicio:</small>
+                                        <input type="date" class="form-control form-control-sm" id="f_inicio">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Fecha Fin:</small>
+                                        <input type="date" class="form-control form-control-sm" id="f_fin">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Hora Inicio:</small>
+                                        <input type="time" class="form-control form-control-sm" id="h_inicio">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Hora Fin:</small>
+                                        <input type="time" class="form-control form-control-sm" id="h_fin">
+                                    </div>
+                                </div>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm px-4" id="btnAplicarFiltro">Aplicar Filtro</button>
+                                    <button class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltro">Limpiar</button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="small fw-bold text-muted mb-2 d-block">Búsqueda rápida (Texto):</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="buscadorPersonalizado" class="form-control" placeholder="Nombre, lugar o persona...">
+                                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mb-4">
+                        <div class="card-header">
+                            
+                                <i class="bi bi-table me-2 text-primary"></i>Eventos Organizados por mi
+                            
+                        </div>
+                        <div class="card-body">
+                                <table id="tablaInvitaciones" class="table table-hover align-middle mb-0 w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Evento</th>
+                                            <th>Tipo</th>
+                                            <th>Fecha</th>
+                                            <th>Horario</th>
+                                            <th>Lugar</th>
+                                            <th>Estado actual</th>
+                                            <th class="text-center">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                        </div>
+                </div>
+                @await Html.PartialAsync("_ModalDetallesEvento")
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="_ModalCreateEvento" />
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!--JQUERY-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <!--select2-->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!--data table-->
+    <script src="https://cdn.datatables.net/2.3.4/js/dataTables.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArGj37pDQqn1AAtZR7dpBOYGQMF_5pIOk&libraries=places&callback=initMap" async defer></script>
+    
+    <script>
+   
+    function gestionarInvitacionDesdeModal(accion) {
+        // 1. Ejecutamos la lógica que ya tenemos (la que tiene el SweetAlert y el fetch)
+        // Pasamos el idEventoActual que se guardó cuando abrimos el modal
+        gestionarInvitacion(idEventoActual, accion);
+        
+        // 2. Cerramos el modal automáticamente después de procesar
+        // Le damos un pequeño delay para que el usuario vea el éxito antes de que desaparezca el modal
+        setTimeout(() => {
+            const modalEl = document.getElementById('modalDetallesEvento');
+            const modalInstancia = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstancia) {
+                modalInstancia.hide();
+            }
+        }, 1500); 
+    }
+
+        $(document).ready(function () {
+            const hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+            $('#f_inicio').val(hoy);
+            $('#f_fin').val(hoy);
+            $('#h_inicio').val(''); // Hora en blanco
+            $('#h_fin').val('');
+
+            let esPrimeraCarga = true;
+            // 1. Inicializar DataTable
+            let tabla = $('#tablaInvitaciones').DataTable({
+                ajax: {
+                    url: 'http://localhost:5188/api/MisEventos/mis-eventos',
+                    type: 'GET',
+                    data: function (d) {
+                        // Si es la primera vez que entra, NO enviamos filtros (la API devolverá todo)
+                        if (esPrimeraCarga) {
+                            return d; 
+                        }
+                        // Si ya no es la primera carga, enviamos los valores de los inputs
+                        d.start = $('#f_inicio').val();
+                        d.end = $('#f_fin').val();
+                        d.startTime = $('#h_inicio').val();
+                        d.endTime = $('#h_fin').val();
+                        d.origen = "creados";
+                    },
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                },
+                columns: [
+                    { data: 'eventoNombre', render: (data) => `<span class="fw-bold text-dark">${data}</span>` },
+                    { 
+                        data: 'tipo',
+                        render: (data) => `<span class="badge ${data === 'Exclusivo' ? 'bg-danger-subtle text-danger' : 'bg-info-subtle text-info'} border">${data}</span>`
+                    },
+                    { data: 'fecha' },
+                    { 
+                        data: null,
+                        render: (row) => `<small class="text-muted"><i class="bi bi-clock me-1"></i>${row.horaInicio} a ${row.horaFin}</small>`
+                    },
+                    { data: 'lugar' },
+                    { 
+                        data: 'estadoEvento',
+                        render: function(data) {
+                            let clase = data === 'Concluido' ? 'bg-secondary' : (data === 'En curso' ? 'pulse-now' : 'bg-success');
+                            return `<span class="badge ${clase} text-white shadow-sm px-3 py-1">${data.toUpperCase()}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (row) {
+                            return `
+                            <div class="d-flex justify-content-center gap-1">
+                                <button class="btn btn-sm btn-outline-info rounded-pill" onclick="verDetalles(${row.id_evento}, 'Creador')" title="Ver detalles e invitados">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary rounded-pill" onclick="editarEvento(${row.id_evento})" title="Editar información">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger rounded-pill" id="btn-eliminar-${row.id_evento}" onclick="eliminarEvento(${row.id_evento})" title="Eliminar evento">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>`;
+                        }
+                    }
+                ],
+                language: {
+                    search: "Busqueda Rapida:",   // Cambia el texto de "Search"
+                    lengthMenu: "Mostrar _MENU_ registros por página",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    infoEmpty: "No hay registros disponibles",
+                    infoFiltered: "(filtrado de _MAX_ registros totales)",
+                    zeroRecords: "No se encontraron resultados",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    },
+                }
+            });
+
+            // 2. Lógica del Buscador Personalizado
+            $('#buscadorPersonalizado').on('keyup', function () {
+                tabla.search(this.value).draw();
+            });
+
+            // 3. Filtro de Fecha
+            $('#f_inicio').on('change', function() {
+                $('#f_fin').val($(this).val());
+            });
+
+            // Botón APLICAR FILTRO
+            $('#btnAplicarFiltro').on('click', function () {
+                const f_inicio = new Date($('#f_inicio').val());
+                const f_fin = new Date($('#f_fin').val());
+
+                // Validación: Fecha fin no puede ser menor a inicio
+                if (f_fin < f_inicio) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Rango de fechas inválido',
+                        text: 'La fecha final no puede ser anterior a la fecha de inicio.'
+                    });
+                    return;
+                }
+
+                // Marcamos que ya no es la primera carga para que el AJAX use los filtros
+                esPrimeraCarga = false;
+                tabla.ajax.reload();
+            });
+
+            // Botón LIMPIAR: Restablece a "Todo" y reinicia el flag
+            $('#btnLimpiarFiltro').on('click', function () {
+                esPrimeraCarga = true;
+                $('#f_inicio').val(hoy);
+                $('#f_fin').val(hoy);
+                $('#h_inicio').val('');
+                $('#h_fin').val('');
+                tabla.ajax.reload();
+            });
+
+            // Búsqueda rápida de DataTables (Independiente)
+            $('#buscadorPersonalizado').on('keyup', function () {
+                tabla.search(this.value).draw();
+            });
+
+
+        });
+    </script>
+    <script>
+
+        let mapaDetalleObj = null;
+        let marcadorDetalleObj = null;
+        let intervaloCuentaRegresiva = null;
+        let idEventoActual = null;
+        async function verDetalles(id) {
+            idEventoActual = id;
+            const token = localStorage.getItem('token');
+            limpiarModal();
+
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${id}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!res.ok) throw new Error("Evento no encontrado");
+                const ev = await res.json();
+
+
+                // --- 1. DATOS BÁSICOS (Con protección de nulos) ---
+                const txtNombre = document.getElementById('detNombre');
+                if (txtNombre) txtNombre.innerText = ev.nombre;
+
+                const txtDesc = document.getElementById('detDescripcion');
+                if (txtDesc) txtDesc.innerText = ev.descripcion || "Sin descripción.";
+
+                const txtFecha = document.getElementById('detFecha');
+                if (txtFecha) txtFecha.innerText = formatearFechas(ev.fecha_inicio, ev.fecha_finalizacion);
+
+                const txtHorario = document.getElementById('detHorario');
+                if (txtHorario) txtHorario.innerText = `${ev.hora_inicio} - ${ev.hora_finalizacion}`;
+
+                // OJO: En tu HTML pusiste id="detTipo", no "detTipoBadge"
+                const badgeTipo = document.getElementById('detTipo');
+                if (badgeTipo) badgeTipo.innerText = ev.tipo;
+
+                // --- 2. LÓGICA DE TIEMPO (Solo si existen los elementos) ---
+                const containerStatus = document.getElementById('detStatusBadge');
+                if (containerStatus) {
+                    actualizarEstadoEvento(`${ev.fecha_inicio}T${ev.hora_inicio}`, `${ev.fecha_finalizacion}T${ev.hora_finalizacion}`);
+                }
+
+                const containerCountdown = document.getElementById('detCountdown');
+                if (containerCountdown) {
+                    iniciarCuentaRegresiva(`${ev.fecha_inicio}T${ev.hora_inicio}`);
+                }
+
+                // --- 3. IMAGEN (Layout Adaptativo) ---
+                const colImg = document.getElementById('colImagen');
+                const imgElement = document.getElementById('detImgElement');
+                if (ev.imagen && colImg && imgElement) {
+                    imgElement.src = `http://localhost:5188/uploads/${ev.imagen}`;
+                    colImg.classList.remove('d-none');
+                    document.getElementById('colDatos').className = "col-md-4";
+                    document.getElementById('colMapa').className = "col-md-4";
+                } else if (colImg) {
+                    colImg.classList.add('d-none');
+                    document.getElementById('colDatos').className = "col-md-6 border-end";
+                    document.getElementById('colMapa').className = "col-md-6";
+                }
+
+                // --- 4. MAPA Y PARTICIPANTES ---
+                actualizarMapaDetalleInteractivos(ev.latitud, ev.longitud);
+                cargarParticipantes(id);
+
+
+
+                // --- 5. BOTONES (Google Calendar y Maps) ---
+                const btnMaps = document.getElementById('btnExternalMap');
+                if (btnMaps) btnMaps.href = `https://www.google.com/maps?q=${ev.latitud},${ev.longitud}`;
+                
+                const btnCal = document.getElementById('btnCalendar');
+                if (btnCal) {
+                    const s = ev.fecha_inicio.replaceAll('-', '') + 'T' + ev.hora_inicio.replaceAll(':', '') + '00';
+                    const e = ev.fecha_finalizacion.replaceAll('-', '') + 'T' + ev.hora_finalizacion.replaceAll(':', '') + '00';
+                    btnCal.href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.nombre)}&dates=${s}/${e}&details=${encodeURIComponent(ev.descripcion)}&location=${encodeURIComponent(ev.lugar)}`;
+                }
+                //BOTON DE INVITAR A PERSONAS
+                const ahora = new Date();
+                const fechaFin = new Date(`${ev.fecha_finalizacion}T${ev.hora_finalizacion}`);
+                const btnInvitar = document.getElementById('btnInvitarToggle');
+                if (ahora > fechaFin) {
+                    btnInvitar.classList.add('d-none'); 
+                } else {
+                    btnInvitar.classList.remove('d-none');
+                }
+
+                // --- 6. LANZAR EL MODAL ---
+                const modalElement = document.getElementById('modalDetallesEvento');
+                if (modalElement) {
+                    const myModal = new bootstrap.Modal(modalElement);
+                    myModal.show();
+                    }
+
+            } catch (error) { 
+                console.error("Error completo:", error);
+                Swal.fire("Error", "No se pudo cargar el detalle del evento.", "error");
+            }
+        }
+        function limpiarModal() {
+            const select = $('#selectUsuarios');
+            if (select.hasClass("select2-hidden-accessible")) {
+                select.val(null).trigger('change').select2('destroy');
+            }
+            
+            // Reset UI
+            document.getElementById('rowInvitacion')?.classList.add('d-none');
+            document.getElementById('listaParticipantes').innerHTML = '';
+            if (intervaloCuentaRegresiva) clearInterval(intervaloCuentaRegresiva);
+        }
+
+        function actualizarEstadoEvento(startISO, endISO) {
+            const now = new Date();
+            const start = new Date(startISO);
+            const end = new Date(endISO);
+            const badge = document.getElementById('detStatusBadge');
+            
+            if (now > end) {
+                badge.innerHTML = `<span class="status-badge bg-secondary text-white shadow-sm px-3 py-1">CONCLUIDO</span>`;
+            } else if (now >= start && now <= end) {
+                badge.innerHTML = `<span class="status-badge bg-danger text-white pulse-now shadow-sm px-3 py-1">● EN CURSO</span>`;
+            } else {
+                badge.innerHTML = `<span class="status-badge bg-success text-white shadow-sm px-3 py-1">PRÓXIMAMENTE</span>`;
+            }
+        }
+
+        function formatearFechas(f1, f2) {
+            const opciones = { day: 'numeric', month: 'long', year: 'numeric' };
+            const d1 = new Date(f1 + "T00:00:00");
+            const d2 = new Date(f2 + "T00:00:00");
+
+            if (f1 === f2) {
+                return d1.toLocaleDateString('es-ES', opciones);
+            } else {
+                const opCorta = { day: 'numeric', month: 'short' };
+                return `Del ${d1.toLocaleDateString('es-ES', opCorta)} al ${d2.toLocaleDateString('es-ES', opciones)}`;
+            }
+        }
+
+        function iniciarCuentaRegresiva(fechaISO) {
+            if (intervaloCuentaRegresiva) clearInterval(intervaloCuentaRegresiva);
+            const target = new Date(fechaISO).getTime();
+            const box = document.getElementById('detCountdown');
+            const textEl = document.getElementById('countdownText');
+
+            intervaloCuentaRegresiva = setInterval(() => {
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff < 0) {
+                    box.classList.add('d-none');
+                    clearInterval(intervaloCuentaRegresiva);
+                    return;
+                }
+
+                box.classList.remove('d-none');
+                const d = Math.floor(diff / (86400000));
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                textEl.innerText = `Faltan ${d}d ${h}h ${m}m`;
+            }, 1000);
+        }
+
+        function cargarParticipantes(idEvento) {
+            const token = localStorage.getItem('token'); // Obtenemos el token
+            const lista = document.getElementById('listaParticipantes');
+            lista.innerHTML = '<div class="text-center p-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
+            fetch(`http://localhost:5188/api/Eventos/${idEvento}/participantes`, {
+                method: 'GET',
+                headers: { 
+                    'Authorization': 'Bearer ' + token, // ¡Esta es la línea clave!
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => {
+                // Validamos la respuesta antes de convertir a JSON
+                if (!res.ok) {
+                    if (res.status === 401) throw new Error("Sesión expirada");
+                    throw new Error("Error en el servidor");
+                }
+                return res.json();
+            })
+            .then(data => {
+                lista.innerHTML = '';
+                if (!data || data.length === 0) {
+                    lista.innerHTML = '<div class="text-muted small p-3 text-center italic">Aún no hay participantes confirmados.</div>';
+                    return;
+                }
+                data.forEach(p => {
+                    // Usamos nombres de propiedades en minúsculas (como los envía el JSON)
+                    let estadoHtml = '';
+                    if (p.estado === "Aceptado") {
+                        estadoHtml = '<span class="badge bg-success-subtle text-success border border-success-subtle ms-auto" style="font-size: 0.65rem;">Confirmado</span>';
+                    } else {
+                        estadoHtml = '<span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-auto" style="font-size: 0.65rem;">Invitado</span>';
+                    }
+                    const inicial = p.nombre ? p.nombre.charAt(0).toUpperCase() : '?';
+                    lista.innerHTML += `
+                                        <div class="participant-item d-flex align-items-center p-2 mb-1 rounded-3 hover-light" style="border-bottom: 1px solid #f8f9fa;">
+                                            <div class="participant-avatar me-2" style="width: 32px; height: 32px; font-size: 0.75rem; background: #eef2ff; color: #4e73df; border: 1px solid #d1d3e2;">
+                                                ${inicial}
+                                            </div>
+                                            <div class="d-flex flex-column" style="line-height: 1.2;">
+                                                <span class="fw-bold text-dark small">${p.nombre} ${p.ape_paterno}</span>
+                                                <span class="text-muted" style="font-size: 0.7rem;">${p.ape_materno || ''}</span>
+                                            </div>
+                                            ${estadoHtml}
+                                        </div>`;
+                });
+            })
+            .catch(err => {
+                lista.innerHTML = '<div class="text-danger small p-2 text-center">No se pudieron cargar los participantes.</div>';
+            });
+        }
+
+        function actualizarMapaDetalleInteractivos(lat, lng) {
+            const pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            if (!mapaDetalleObj) {
+                mapaDetalleObj = new google.maps.Map(document.getElementById("mapaDetalle"), {
+                    zoom: 15, center: pos,
+                    draggable: true, 
+                    scrollwheel: true,
+                    mapTypeControl: true
+                });
+                marcadorDetalleObj = new google.maps.Marker({ position: pos, map: mapaDetalleObj });
+            } else {
+                mapaDetalleObj.setCenter(pos);
+                marcadorDetalleObj.setPosition(pos);
+            }
+            
+            // Refrescar mapa al abrir modal para evitar el fondo gris
+            setTimeout(() => {
+                google.maps.event.trigger(mapaDetalleObj, "resize");
+                mapaDetalleObj.setCenter(pos);
+            }, 300);
+        }
+        // --- FUNCIONES DE INVITAR A EVENTOS A OTROS ---
+        function toggleInvitacion() {
+            const row = document.getElementById('rowInvitacion');
+            row.classList.toggle('d-none');
+            
+            // Si se muestra, cargamos los usuarios disponibles
+            if (!row.classList.contains('d-none')) {
+                cargarUsuariosDisponibles();
+            }
+        }
+
+        async function cargarUsuariosDisponibles() {
+            const token = localStorage.getItem('token');
+            const select = $('#selectUsuarios'); // Usamos jQuery para Select2
+            select.select2({
+                placeholder: "Buscar personas para invitar...",
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('#footerDetalle'),
+                language: {
+                    noResults: () => "No hay usuarios disponibles"
+                }
+            });
+
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${idEventoActual}/usuarios-disponibles`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const usuarios = await res.json();
+
+                select.empty(); // Limpiar opciones previas
+                usuarios.forEach(u => {
+                    select.append(new Option(u.nombreCompleto, u.id, false, false));
+                });
+                select.trigger('change');
+            } catch (e) {
+                console.error("Error cargando usuarios:", e);
+            }
+        }
+
+        async function enviarInvitaciones() {
+            const ids = $('#selectUsuarios').val(); // Obtenemos lista de IDs seleccionados
+            if (!ids || ids.length === 0) {
+                Swal.fire("Aviso", "Selecciona al menos un usuario", "info");
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${idEventoActual}/invitar`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ids)
+                });
+
+                if (res.ok) {
+                    Swal.fire("¡Éxito!", "Invitaciones enviadas", "success");
+                    toggleInvitacion(); // Ocultar panel
+                    cargarParticipantes(idEventoActual); // Refrescar lista de abajo
+                }
+            } catch (e) {
+                Swal.fire("Error", "No se pudieron enviar las invitaciones", "error");
+            }
+        }
+        document.getElementById('modalDetallesEvento').addEventListener('hidden.bs.modal', limpiarModal);
+    </script>
+    <!-- FUNCIONAMIENTO PARA ELIMINAR UN EVENTO-->
+    <script>
+        function eliminarEvento(id) {
+            const btn = document.getElementById(`btn-eliminar-${id}`);
+            
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "Esta acción eliminará el evento permanentemente. Si hay invitados que ya aceptaron, la acción podría ser bloqueada.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Animación de carga en el botón
+                    const originalHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                    fetch(`http://localhost:5188/api/MisEventos/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    })
+                    .then(async res => {
+                        const data = await res.json();
+                        if (!res.ok) {
+                            // Aquí capturamos el BadRequest del Backend (si hay participantes)
+                            throw new Error(data.detalle || data.message || "No se pudo eliminar");
+                        }
+                        return data;
+                    })
+                    .then(data => {
+                        Swal.fire('¡Eliminado!', data.message, 'success');
+                        $('#tablaInvitaciones').DataTable().ajax.reload(null, false);
+                    })
+                    .catch(err => {
+                        Swal.fire('Atención', err.message, 'warning');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    });
+                }
+            });
+        }
+    </script>
+    <!-- FUNCIONAMIENTO PARA CREAR UN EVENTO-->
+    <script>
+        // ********************************
+        //              MODAL DE CREAR EVENTO
+        //************************************
+        let map;
+        let marker;
+        let autocomplete;
+        let geocoder;
+        
+
+        function initMap() {
+            const geocoder = new google.maps.Geocoder();
+            const initialPos = { lat: -16.5000, lng: -68.1500 };
+
+            map = new google.maps.Map(document.getElementById("mapa"), {
+                center: initialPos,
+                zoom: 15,
+                mapTypeControl: false
+            });
+
+            marker = new google.maps.Marker({
+                position: initialPos,
+                map: map,
+                draggable: true 
+            });
+
+            // --- CONFIGURACIÓN DEL BUSCADOR ---
+            const input = document.getElementById('direccion');
+            
+            // Creamos el objeto Autocomplete
+            autocomplete = new google.maps.places.Autocomplete(input, {
+                types: ['geocode', 'establishment'], // Busca direcciones y negocios
+                componentRestrictions: { country: "bo" } // Opcional: Restringir a Bolivia
+            });
+
+            // Vincular el buscador al mapa
+            autocomplete.bindTo('bounds', map);
+
+            // EVENTO: Cuando el usuario selecciona una sugerencia
+            autocomplete.addListener('place_changed', function () {
+                const place = autocomplete.getPlace();
+
+                if (!place.geometry || !place.geometry.location) {
+                    window.alert("No se encontró información detallada de este lugar.");
+                    return;
+                }
+
+                // 1. Mover el mapa y el pin
+                if (place.geometry.viewport) {
+                    map.fitBounds(place.geometry.viewport);
+                } else {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(17);
+                }
+                marker.setPosition(place.geometry.location);
+
+                // 2. Guardar automáticamente Latitud y Longitud en los inputs ocultos
+                document.getElementById('lat').value = place.geometry.location.lat();
+                document.getElementById('lng').value = place.geometry.location.lng();
+                
+                // El input 'direccion' ya tiene el nombre del lugar, así que se enviará en 'lugar'
+                console.log("Datos capturados:", {
+                    direccion: input.value,
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                });
+            });
+
+            // 2. Modificar el evento del marcador (puntero)
+            marker.addListener('dragend', function () {
+                const pos = marker.getPosition();
+    
+                // 1. Actualizamos los inputs ocultos de latitud y longitud
+                document.getElementById('lat').value = pos.lat();
+                document.getElementById('lng').value = pos.lng();
+
+                // LLAMADA A GEOCODING: Obtener la dirección basada en la nueva posición del pin
+                geocoder.geocode({ location: pos }, (results, status) => {
+                    if (status === "OK") {
+                        if (results[0]) {
+                            // Aquí es donde ocurre la magia: actualizamos el input 'direccion'
+                            const direccionTexto = results[0].formatted_address;
+                            document.getElementById('direccion').value = direccionTexto;
+                        }
+                    } 
+                });
+            });
+            map.addListener('click', function (e) {
+                const clicPos = e.latLng;
+                
+                // Movemos el pin a donde se hizo clic
+                marker.setPosition(clicPos);
+                
+                // Disparamos manualmente el evento de actualización
+                google.maps.event.trigger(marker, 'dragend');
+            });
+            // EVENTO: Si el usuario arrastra el pin manualmente, actualizamos lat/lng
+            marker.addListener('dragend', function() {
+                const pos = marker.getPosition();
+                document.getElementById('lat').value = pos.lat();
+                document.getElementById('lng').value = pos.lng();
+            });
+        }
+        const modalEl = document.getElementById('modalNuevoEvento');
+        modalEl.addEventListener('shown.bs.modal', function () {
+            // Esto quita los cuadros grises del mapa
+            if (map) {
+                google.maps.event.trigger(map, "resize");
+                map.setCenter(marker.getPosition());
+            }
+        });
+
+        // ******************************************************
+        //   ENVÍO ÚNICO DE FORMULARIO (CREAR O EDITAR)
+        // ******************************************************
+        document.getElementById('formEvento').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const fi = document.getElementById('fecha_inicio').value;
+            const hi = document.getElementById('hora_inicio').value;
+            const ff = document.getElementById('fecha_finalizacion').value;
+            const hf = document.getElementById('hora_finalizacion').value;
+
+            const inicio = new Date(`${fi}T${hi}`);
+            const fin = new Date(`${ff}T${hf}`);
+
+            if (fin <= inicio) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Horario Inválido',
+                    text: 'El evento no puede terminar antes o al mismo tiempo que el inicio.',
+                    confirmButtonColor: '#3085d6'
+                });
+                return; 
+            }
+
+            const idEvento = document.getElementById('id_evento').value;
+
+            const url = idEvento 
+                ? `http://localhost:5188/api/MisEventos/${idEvento}` 
+                : 'http://localhost:5188/api/Eventos/crear';
+                
+            const metodo = idEvento ? 'PUT' : 'POST';
+
+            // 4. PREPARAR ENVÍO
+            Swal.fire({
+                title: idEvento ? 'Actualizando evento...' : 'Guardando evento...',
+                text: 'Por favor espera un momento.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const formData = new FormData(this);
+            const token = localStorage.getItem('token');
+
+            fetch(url, {
+                method: metodo,
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    // Manejo de errores (400, 401, etc.)
+                    let mensajes = data.message || "Error al procesar la solicitud";
+                    if (data.errors) mensajes = Object.values(data.errors).flat().join("<br>");
+                    throw new Error(mensajes);
+                }
+                return data;
+            })
+            .then(data => {
+                // 5. ÉXITO TOTAL
+                Swal.fire('¡Listo!', data.message || 'Operación realizada con éxito', 'success').then(() => {
+                    $('#modalNuevoEvento').modal('hide'); 
+                    // Recargar la tabla (usamos el ID de tu tabla de Mis Eventos)
+                    if ($.fn.DataTable.isDataTable('#tablaInvitaciones')) {
+                        $('#tablaInvitaciones').DataTable().ajax.reload(null, false);
+                    }
+                });
+            })
+            .catch(error => {
+                Swal.fire('Atención', error.message, 'warning');
+            });
+        });
+        
+
+        
+    </script>
+    <script>
+        //-------------------------------------------
+        // --- MODAL DE CREAR EVENTO ---
+        //-------------------------------------------
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('modalNuevoEvento');
+            const fInicio = document.getElementById('fecha_inicio');
+            const hInicio = document.getElementById('hora_inicio');
+            const fFin = document.getElementById('fecha_finalizacion');
+            const hFin = document.getElementById('hora_finalizacion');
+
+            
+            
+
+            modal.addEventListener('show.bs.modal', function () {
+                const idActual = $('#id_evento').val();
+
+                if (!idActual || idActual === "") {
+                    const ahora = new Date();
+                    const año = ahora.getFullYear();
+                    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+                    const dia = String(ahora.getDate()).padStart(2, '0');
+                    const hoy = `${año}-${mes}-${dia}`;
+
+                    // Valores por defecto
+                    fInicio.value = hoy;
+                    fFin.value = hoy;
+                    fFin.min = hoy; // Bloquea días pasados en el calendario
+
+                    hInicio.value = "08:00";
+                    hFin.value = "09:00";
+                }
+
+            });
+
+    
+            // Si cambio fecha de inicio -> la de fin la sigue
+            fInicio.addEventListener('change', function() {
+                fFin.value = this.value;
+                fFin.min = this.value; // El fin no puede ser antes que el inicio
+            });
+
+            // Si cambio hora de inicio -> sumamos 1 hora a la de fin
+            hInicio.addEventListener('change', function() {
+                if (!this.value) return;
+                let [h, m] = this.value.split(':');
+                let nuevaHora = (parseInt(h) + 1);
+                if (nuevaHora > 23) nuevaHora = 0;
+                hFin.value = `${String(nuevaHora).padStart(2, '0')}:${m}`;
+            });
+        });
+
+
+
+        document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const txt = document.getElementById('tipoTexto');
+                if (this.id === 'checkCompartido') {
+                    txt.innerText = "Podrás tener varios eventos en este mismo horario.";
+                    txt.className = "text-muted mt-1 d-block";
+                } else {
+                    txt.innerText = "Solo este evento podrá ocupar este horario (Bloqueo total).";
+                    txt.className = "text-danger  fw-bold";
+                }
+            });
+        });
+
+    </script>
+
+    <script>
+        // 🟢 FUNCIÓN: ABRIR PARA CREAR
+        function abrirModalNuevo() {
+            // 1. Limpiar el ID oculto (FUNDAMENTAL para que no crea que es edición)
+            $('#id_evento').val(''); 
+            
+            // 2. Resetear el formulario completo
+            $('#formEvento')[0].reset();
+
+            // 3. Resetear la UI (Colores y Títulos)
+            $('.modal-title').html('<i class="bi bi-geo-alt-fill me-2"></i> Registrar Evento');
+            $('.modal-header').removeClass('bg-warning text-dark').addClass('bg-primary text-white');
+            $('#formEvento button[type="submit"]').text('Guardar Evento').removeClass('btn-warning').addClass('btn-primary');
+
+            // 4. Resetear Mapa a posición por defecto
+            moverMapa(-16.5000, -68.1500);
+
+            $('#modalNuevoEvento').modal('show');
+        }
+                $('#modalNuevoEvento').on('hidden.bs.modal', function () {
+            
+                // Borramos el ID para que la siguiente vez el modal sepa que es "NUEVO"
+                    $('#id_evento').val('');
+                    
+                    // Limpiamos todo el formulario
+                    document.getElementById('formEvento').reset();
+                    $('#checkCompartido').prop('checked', true);
+                    
+                    // Devolvemos el diseño original
+                    $('.modal-title').html('<i class="bi bi-geo-alt-fill me-2"></i> Registrar Evento');
+                    $('.modal-header').removeClass('bg-warning text-dark').addClass('bg-primary text-white');
+                    $('#formEvento button[type="submit"]').text('Guardar Evento').removeClass('btn-warning').addClass('btn-primary');
+                });
+
+        // 🟡 FUNCIÓN: ABRIR PARA EDITAR
+        async function editarEvento(id) {
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`http://localhost:5188/api/Eventos/${id}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const ev = await res.json();
+
+                // 1. Poner el ID en el campo oculto
+                $('#id_evento').val(ev.id_evento);
+
+                // 2. Cambiar la UI a modo Edición (Amarillo)
+                $('.modal-title').html('<i class="bi bi-pencil-square me-2"></i> Editar Evento');
+                $('.modal-header').removeClass('bg-primary').addClass('bg-warning text-dark');
+                $('#formEvento button[type="submit"]').text('Actualizar Cambios').removeClass('btn-primary').addClass('btn-warning');
+
+                // 3. Llenar los campos con los datos del servidor
+                $('input[name="nombre"]').val(ev.nombre);
+                $('input[name="fecha_inicio"]').val(ev.fecha_inicio.split('T')[0]);
+                $('input[name="hora_inicio"]').val(ev.hora_inicio);
+                $('input[name="fecha_finalizacion"]').val(ev.fecha_finalizacion.split('T')[0]);
+                $('input[name="hora_finalizacion"]').val(ev.hora_finalizacion);
+                $('textarea[name="descripcion"]').val(ev.descripcion);
+                $('input[name="lugar"]').val(ev.lugar);
+                $('#lat').val(ev.latitud);
+                $('#lng').val(ev.longitud);
+
+                $(`input[name="tipo"][value="${ev.tipo}"]`).prop('checked', true);
+
+                $('input[name="tipo"]:checked').trigger('change');
+                // 4. Mover el mapa a la ubicación guardada
+                moverMapa(ev.latitud, ev.longitud);
+
+                $('#modalNuevoEvento').modal('show');
+            } catch (e) {
+                Swal.fire("Error", "No se pudieron cargar los datos", "error");
+            }
+        }
+        function moverMapa(lat, lng) {
+            const pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+            if (map && marker) {
+                map.setCenter(pos);
+                marker.setPosition(pos);
+                // Fix para modales
+                setTimeout(() => google.maps.event.trigger(map, "resize"), 300);
+            }
+        }
+
+        function actualizarDireccionDesdePin() {
+            const pos = marker.getPosition();
+            $('#lat').val(pos.lat());
+            $('#lng').val(pos.lng());
+
+            geocoder.geocode({ location: pos }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    $('#direccion').val(results[0].formatted_address);
+                }
+            });
+        }
+
+        function onPlaceChanged() {
+            const place = autocomplete.getPlace();
+            if (!place.geometry) return;
+
+            if (place.geometry.viewport) map.fitBounds(place.geometry.viewport);
+            else { map.setCenter(place.geometry.location); map.setZoom(17); }
+
+            marker.setPosition(place.geometry.location);
+            $('#lat').val(place.geometry.location.lat());
+            $('#lng').val(place.geometry.location.lng());
+        }
+    </script>
+    
+    
+}

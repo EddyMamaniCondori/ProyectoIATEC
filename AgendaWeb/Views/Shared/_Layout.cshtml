@@ -31,12 +31,12 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
     @RenderSection("Styles", required: false)
   </head>
 
   <body class="layout-fixed sidebar-expand-lg sidebar-mini sidebar-collapse">
-    
+    <div id="global-loader-bar" style="position: fixed; top: 0; left: 0; width: 0%; height: 3px; background: #0d6efd; z-index: 99999; transition: width 0.3s ease;"></div>
     <div class="app-wrapper">
 
       
@@ -160,7 +160,179 @@
       });
     })();
     </script>
+
+    <script>
+      // --- 1. CONFIGURACIÓN DE SIGNALR ---
+      const connection = new signalR.HubConnectionBuilder()
+          .withUrl("http://localhost:5188/notificacionHub", {
+              accessTokenFactory: () => localStorage.getItem('token')
+          })
+          .withAutomaticReconnect()
+          .build();
+
+      // --- 2. ESCUCHAR INVITACIONES EN TIEMPO REAL ---
+      connection.on("RecibirInvitacion", function (data) {
+          // Alerta flotante (Toast)
+          Swal.fire({
+          title: '<span style="color: #002147; font-weight: bold;">¡Nueva Invitación!</span>',
+          html: `
+              <div class="text-start" style="font-size: 0.9rem;">
+                  <p class="mb-2">Hola, <b>${data.quienInvita}</b> te ha enviado una invitación para el evento:</p>
+                  <div class="p-3 mb-2 rounded-3" style="background-color: #f8f9fa; border-left: 4px solid #002147;">
+                      <i class="bi bi-calendar-event-fill me-2 text-primary"></i>
+                      <strong class="text-dark">${data.eventoNombre}</strong>
+                  </div>
+                  <p class="text-muted small mt-2"><i class="bi bi-clock-history me-1"></i> La invitación vence pronto, ¡revisala!</p>
+              </div>
+          `,
+          icon: 'info',
+          iconColor: '#002147',
+          toast: true,
+          position: 'top-end', 
+          timer: 30000, 
+          timerProgressBar: true, 
+          showConfirmButton: true,
+          confirmButtonText: '<i class="bi bi-eye-fill me-1"></i> Ver Invitación',
+          confirmButtonColor: '#002147',
+          showCancelButton: true,
+          cancelButtonText: 'Cerrar',
+          background: '#ffffff',
+          customClass: {
+              popup: 'shadow-lg border-radius-15', // Sombra elegante
+              title: 'fs-5'
+          }
+      }).then((result) => {
+          // Si el usuario hace clic en "Ver Invitación"
+          if (result.isConfirmed) {
+              window.location.href = "/Invitaciones/Index";
+          }
+      });
+
+          // Actualizar la campana inmediatamente
+          actualizarCampana();
+      });
+
+      // Iniciar conexión
+      connection.start().then(() => actualizarCampana()).catch(err => console.error(err));
+
+      // --- 3. FUNCIÓN PARA ACTUALIZAR LA CAMPANA ---
+      function actualizarCampana() {
+          fetch('http://localhost:5188/api/Eventos/notificaciones-pendientes', {
+              headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+          })
+          .then(res => res.json())
+          .then(data => {
+              const badge = document.getElementById('notif-badge');
+              const lista = document.getElementById('notif-lista');
+
+              // Actualizar el numerito
+              if (data.total > 0) {
+                  badge.innerText = data.total;
+                  badge.classList.remove('d-none');
+              } else {
+                  badge.classList.add('d-none');
+              }
+
+              // Llenar el dropdown con las últimas 5
+              if (data.items.length === 0) {
+                  lista.innerHTML = '<p class="text-center text-muted small p-3">No tienes invitaciones pendientes</p>';
+              } else {
+                  lista.innerHTML = data.items.map(n => `
+                      <a href="/Invitaciones/Index" class="list-group-item list-group-item-action border-0">
+                          <div class="d-flex align-items-center">
+                              <div class="flex-shrink-0">
+                                  <i class="bi bi-envelope-fill text-primary"></i>
+                              </div>
+                              <div class="flex-grow-1 ms-3">
+                                  <p class="mb-0 small fw-bold text-dark">${n.eventoNombre}</p>
+                                  <p class="mb-0 x-small text-muted">De: ${n.quienInvita}</p>
+                              </div>
+                          </div>
+                      </a>
+                  `).join('');
+              }
+          });
+      }
+    </script>
     
+    <script>
+        (function() {
+            // Función para mover la barra
+            function setLoaderWidth(percent) {
+                const bar = document.getElementById('global-loader-bar');
+                if (bar) {
+                    bar.style.width = percent + "%";
+                    if (percent === 100) {
+                        setTimeout(() => { bar.style.width = "0%"; }, 500);
+                    }
+                }
+            }
+
+            // --- 1. INTERCEPTOR PARA FETCH (Nativo) ---
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                setLoaderWidth(40);
+                try {
+                    const response = await originalFetch(...args);
+                    return response;
+                } finally {
+                    setLoaderWidth(100);
+                }
+            };
+
+            // --- 2. INTERCEPTOR PARA JQUERY (DataTables / $.ajax) ---
+            // Esperamos a que jQuery esté listo
+            window.addEventListener('load', function() {
+                if (window.jQuery) {
+                    $(document).ajaxStart(function() {
+                        setLoaderWidth(60);
+                    });
+                    $(document).ajaxStop(function() {
+                        setLoaderWidth(100);
+                    });
+                }
+            });
+        })();
+    </script>
+    <script>
+      async function apiFetch(url, options = {}) {
+        let token = localStorage.getItem('token');
+        
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+
+        let response = await fetch(url, options);
+
+        if (response.status === 401) {
+
+            const refreshRes = await fetch('http://localhost:5188/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    refreshToken: localStorage.getItem('refreshToken') 
+                })
+            });
+
+            if (refreshRes.ok) {
+                const newData = await refreshRes.json();
+                localStorage.setItem('token', newData.accessToken);
+                localStorage.setItem('refreshToken', newData.refreshToken);
+
+                options.headers['Authorization'] = `Bearer ${newData.accessToken}`;
+                return await fetch(url, options);
+            } else {
+                console.error("❌ Sesión expirada. Redirigiendo al login.");
+                localStorage.clear();
+                window.location.href = '/Account/Login';
+            }
+        }
+
+        return response;
+    }
+    </script>
     @RenderSection("Scripts", required: false)
     
   </body>

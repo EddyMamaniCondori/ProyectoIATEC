@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 namespace AgendaApi.Models;
 
-// Heredamos de IdentityUser para que .NET sepa que este es nuestro usuario del sistema
+
 public class Usuario : IdentityUser
 {
     // Lo dejamos vacío por ahora, o puedes añadir un campo básico
